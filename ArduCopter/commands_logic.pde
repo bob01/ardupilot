@@ -861,26 +861,41 @@ static void do_repeat_relay()
 static void do_nav_roi()
 {
 #if MOUNT == ENABLED
-
     // check if mount type requires us to rotate the quad
     if( camera_mount.get_mount_type() != AP_Mount::k_pan_tilt && camera_mount.get_mount_type() != AP_Mount::k_pan_tilt_roll ) {
-        yaw_look_at_WP = command_nav_queue;
-        set_yaw_mode(YAW_LOOK_AT_LOCATION);
+#endif //MOUNT
+
+        // TO-DO: expand handling of the do_nav_roi to support all modes of the MAVLink.  Currently we only handle mode 0, 1 and 3 (see below)
+        //		0: do nothing
+        //		1: point at next waypoint
+        //		2: point at a waypoint taken from WP# parameter (2nd parameter?)
+        //		3: point at a location given by alt, lon, lat parameters
+        //		4: point at a target given a target id (can't be implmented)
+        switch(command_nav_queue.p1)
+        {
+        case 0:
+            // MAV_ROI_NONE = 0: Yaw will hold it's current angle
+            set_yaw_mode(YAW_HOLD);
+            break;
+
+        case 1:
+            // MAV_ROI_WPNEXT = 1: Yaw will point at next WP
+            set_yaw_mode(YAW_LOOK_AT_NEXT_WP);
+            break;
+
+        case 3:
+        default:
+            // MAV_ROI_LOCATION = 3: Yaw will point at the indicated location (The location in the command)
+            yaw_look_at_WP = command_nav_queue;
+            set_yaw_mode(YAW_LOOK_AT_LOCATION);
+            break;
+        }
+
+#if MOUNT == ENABLED
     }
     // send the command to the camera mount
     camera_mount.set_roi_cmd(&command_nav_queue);
-
-    // TO-DO: expand handling of the do_nav_roi to support all modes of the MAVLink.  Currently we only handle mode 4 (see below)
-    //		0: do nothing
-    //		1: point at next waypoint
-    //		2: point at a waypoint taken from WP# parameter (2nd parameter?)
-    //		3: point at a location given by alt, lon, lat parameters
-    //		4: point at a target given a target id (can't be implmented)
-#else
-    // if we have no camera mount aim the quad at the location
-    yaw_look_at_WP = command_nav_queue;
-    set_yaw_mode(YAW_LOOK_AT_LOCATION);
-#endif
+#endif //MOUNT
 }
 
 // do_take_picture - take a picture with the camera library
